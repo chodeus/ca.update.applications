@@ -22,6 +22,11 @@ reviews:
     - "!**/*.txz"
     - "!**/*.png"
   path_instructions:
+    - path: "source/**"
+      instructions: |
+        Shipped code must keep working on Unraid 6 as well as 7.
+        - PHP syntax and functions must run on PHP 7.x. Flag arrow functions, `??=`, typed properties, match, nullsafe `?->`, named arguments and str_contains. tests/ is exempt.
+        - Anything from Unraid that is missing on older releases needs a guard or a fallback. Examples: the `Manager` key of getDockerContainers() (7.0+), `updated` being null for unmanaged containers (7.0+), scripts/rebuild_container (6.12+), scripts/update_container (6.11+) and addRoute() (6.10+). Without `Manager` every container reads as third-party unless that is handled.
     - path: "source/**/scripts/updateDocker.php"
       instructions: |
         Runs as root from cron. It stops, recreates and starts live containers with nobody watching.
