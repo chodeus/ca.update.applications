@@ -42,4 +42,10 @@ function mergeAutoUpdateContainers($saved,$selected,$offered) {
   return $saved;
 }
 
+# Whole calendar days since a version's date; a future date counts as 0
+function pluginAgeDays($versionDate,$now) {
+  $interval = date_diff(date_create($versionDate->format("Y-m-d")),date_create($now->format("Y-m-d")));
+  return $interval->invert ? 0 : $interval->days;
+}
+
 ?>
