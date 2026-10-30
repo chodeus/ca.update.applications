@@ -1,0 +1,85 @@
+# .coderabbit.yaml: ca.update.applications (Unraid plugin; a root cron job stops and recreates containers and installs plugins)
+language: "en-US"
+reviews:
+  profile: "assertive"
+  request_changes_workflow: false
+  sequence_diagrams: false
+  estimate_code_review_effort: false
+  related_issues: false
+  related_prs: false
+  suggested_reviewers: false
+  in_progress_fortune: false
+  pre_merge_checks:
+    docstrings:
+      mode: "off"
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - "^beta$"
+  path_filters:
+    - "!archive/**"
+    - "!**/*.txz"
+    - "!**/*.png"
+  path_instructions:
+    - path: "source/**/scripts/updateDocker.php"
+      instructions: |
+        Runs as root from cron. It stops, recreates and starts live containers with nobody watching.
+        - LIVE MEMBERSHIP: candidates come from DockerClient::getDockerContainers(). DockerTemplates::getAllInfo() returns dockerMan's docker.json, which keeps containers removed outside the Docker page until reboot. A cached name must never be stopped, recreated, started, logged as having an update or named in a notification. CreateDocker.php recreates any name that still has a template.
+        - UPDATE STATE: getAllInfo() stores `updated` as the strings 'true', 'false' or 'NULL', and as null for containers not managed by dockerman. Only 'false' means an update is available. Those containers have no template, so CreateDocker.php cannot update them and they would only be stopped and restarted.
+        - FAIL CLOSED: an empty container list can be a failed Docker read. It must lead to no stop, no recreate and no success notification.
+        - RUNNING STATE: a container that was running before the update must be running afterwards, on every path, including a failed pull or recreate. A container that was stopped must stay stopped.
+        - HONEST REPORTING: a notification or log line that says a container was updated must rest on evidence, such as a changed image ID. Flag any success message sent without a check.
+        - NETWORK CHILDREN: containers using `container:<parent>` pin the parent's ID, so recreating the parent strands them. getDockerContainers() reports them with a NetworkMode ending in `:???`.
+        - CACHES: getDockerContainers() has a static cache. A read after the update must follow flushCaches().
+        - SHELL: every value that reaches exec() goes through escapeshellarg(), including settings such as dockerStopDelay and anything built from container or image names.
+    - path: "source/**/scripts/updateApplications.php"
+      instructions: |
+        Runs as root from cron and installs plugin updates.
+        - The delay setting is a minimum age in total days. Check date arithmetic across month and year boundaries, and with a version dated in the future.
+        - A failed `plugin update` must never be reported as success.
+        - The notify helper's arguments are positional: event, subject, description, message, importance. Importance is normal, warning or alert.
+    - path: "source/**/include/{exec,helpers}.php"
+      instructions: |
+        Settings endpoint and shared helpers. Unraid's auto_prepend validates csrf_token on every POST, and nginx enforces auth, so a missing token check here is correct. Do not flag it, and flag a plugin-side re-validation.
+        - exec.php takes POST values and writes JSON settings and cron files under /boot/config/plugins. Validate values that reach a cron line, including newlines in the custom expression. A broken generated cron line is a correctness finding.
+        - Saving settings must not lose state the page did not show. A toggle for a container that was hidden or unavailable when the page rendered must survive Apply.
+        - helpers.php must stay free of side effects: both the web endpoint and the cron scripts load it.
+    - path: "source/**/*.page"
+      instructions: |
+        Unraid webGUI pages. AutoUpdateApps is a tabbed xmenu, so dockerUpdateApps.page runs in the same scope as AutoUpdate.page and uses its tr() function and cron option variables.
+        - List containers from the live Docker list, never from the keys of getAllInfo().
+        - HTML-escape values placed in markup or inline scripts, including container names, image names, icon paths and saved settings echoed into jQuery calls.
+        - A bare jQuery $.post gets csrf_token from Unraid's global ajaxPrefilter, so do not ask for it to be added. fetch or XMLHttpRequest calls must attach it themselves. Never put the token in a GET query string.
+        - An empty list caused by a failed Docker read must not let Apply erase saved toggles.
+    - path: "plugins/*.plg"
+      instructions: |
+        Unraid plugin manifest. The <FILE Run> install and Method="remove" scripts run as root on the host.
+        - rm or removepkg must target a fixed plugin path. Never use removepkg outside Method="remove".
+        - Check that `rm -f $(ls ...&name;*.txz | grep -v &version;)` cannot delete unintended files when the version is empty or malformed.
+        - Downloads stay pinned with a matching MD5. The version and MD5 entities must match the package in archive/.
+    - path: "tests/**"
+      instructions: |
+        Tests must exercise the real source: load the shipped file or block, not a copy of its logic. Flag a test whose fixture hides the behaviour it claims to cover, such as stubbing the part that can fail. Tests must never touch real containers, /boot or cron.
+    - path: "{pkg_build.sh,copy_to_git.sh,source/ca.update.applications/pkg_build.sh}"
+      instructions: |
+        Packaging scripts. Flag quoting bugs and anything that widens a delete, or that ships tests or review config inside the package.
+    - path: "**"
+      instructions: |-
+        Applies to every file, whatever the language:
+        - Comments are navigational or instructional only and capped at 1-2 lines: what a non-obvious block does, or the gotcha it guards. No why/history essays, no before/after narrative, no restating the code, no section banners. Docstrings: one line unless the signature genuinely cannot carry it. Never ask for a docstring to be added; a missing docstring is not a finding.
+        - The 1-2 line cap wins even inside an already heavily-commented file. Matching local density is not licence to exceed it.
+        - A comment, help text, log message, notification or UI label that disagrees with what the code does is a correctness finding, not a stale-comment nit: report it and say which side is wrong.
+        - Do not flag stylistic preferences that are consistent across the file (naming, quoting, tabs versus spaces, formatting, line length), or code the diff did not change unless the change makes it wrong. Report correctness, security, data-loss and the classes named above.
+  tools:
+    gitleaks:
+      enabled: true
+    # emhttp has no autoloader or stubs, so these only add false positives and style noise
+    phpstan:
+      enabled: false
+    phpmd:
+      enabled: false
+    phpcs:
+      enabled: false
+    markdownlint:
+      enabled: false
