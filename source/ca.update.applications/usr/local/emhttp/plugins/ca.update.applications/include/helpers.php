@@ -15,7 +15,7 @@ function getPost($setting,$default) {
   return isset($_POST[$setting]) ? urldecode(($_POST[$setting])) : $default;
 }
 function getPostArray($setting) {
-  return $_POST[$setting] ?? [];
+  return is_array($_POST[$setting] ?? null) ? $_POST[$setting] : [];
 }
 ##################################################################
 #                                                                #
@@ -29,6 +29,17 @@ function readJsonFile($filename) {
 
 function writeJsonFile($filename,$jsonArray) {
   file_put_contents($filename,json_encode($jsonArray, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+}
+
+# Only containers the page offered can change; hidden or unavailable ones keep their saved toggle
+function mergeAutoUpdateContainers($saved,$selected,$offered) {
+  foreach ($offered as $container) {
+    unset($saved[$container]);
+  }
+  foreach ($selected as $container) {
+    $saved[$container] = ['name'=>$container,'update'=>true];
+  }
+  return $saved;
 }
 
 ?>

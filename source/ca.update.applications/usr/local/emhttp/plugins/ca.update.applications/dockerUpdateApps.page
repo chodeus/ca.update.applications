@@ -11,21 +11,6 @@ Title="Docker Auto Update Settings"
 $docroot = $docroot ?: $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
 
 
-function searchArray($array,$key,$value) {
-  if ( function_exists("array_column") && function_exists("array_search") ) {   # faster to use built in if it works
-    $result = array_search($value, array_column($array, $key));   
-  } else {
-    $result = false;
-    for ($i = 0; $i <= max(array_keys($array)); $i++) {
-      if ( $array[$i][$key] == $value ) {
-        $result = $i;
-        break;
-      }
-    }
-  }
-  return $result;
-}
-
 require_once("/usr/local/emhttp/plugins/dynamix.docker.manager/include/DockerClient.php");
 
 $dockerRunning = is_dir("/var/lib/docker/tmp") ? "true" : "false";
@@ -42,15 +27,15 @@ if ( $dockerRunning == "true" ) {
   $moreInfo = $DockerClient->getDockerContainers();
 
   $dockerSettings = "<table><tr>";
-  $containerNames = array_keys($info);
 	$column = 0;
   $hasVisibleContainers = false;
   $ignoreThirdParty = ($dockerUpdateSettings['global']['dockerIgnoreThirdParty'] ?? "no") == "yes";
-  foreach ($containerNames as $container) {
+  # getAllInfo() keeps containers removed outside the Docker page, so loop over the live list
+  foreach ($moreInfo as $liveContainer) {
+    $container = $liveContainer['Name'];
     $class = ($dockerUpdateSettings['containers'][$container]['update'] ?? false) ? "unRaidDockerButton" : null;
-    $index = searchArray($moreInfo,"Name",$container);
-    $repository = ($index === false) ? "Unknown" : $moreInfo[$index]['Image'];
-		$manager = ($index === false) ? false : ($moreInfo[$index]['Manager'] ?? false);
+    $repository = $liveContainer['Image'];
+		$manager = $liveContainer['Manager'] ?? false;
 		if ( $ignoreThirdParty && $manager != "dockerman" ) {
 			continue;
 		}
@@ -139,6 +124,10 @@ function dockerApply() {
     var container = $(this).data("docker");
     autoUpdate.push(container);
   });
+  var offered = new Array();
+  $(".autoUpdateDocker .ca-switch-button-button").each(function() {
+    offered.push($(this).data("docker"));
+  });
   var dockerSettings = new Array();
   $(".dockerSettings").each(function() {
     var setting = $(this).val();
@@ -149,7 +138,7 @@ function dockerApply() {
   var dockerCron = getCronSettings("docker");
   var dockerNotify = $("#dockerNotify").val();
   var dockerUpdateAll = $("#dockerUpdateAll").val();
-  $.post(caURL,{action:'dockerApply',dockerSettings:dockerSettings,autoUpdate:autoUpdate,dockerCron:dockerCron},function(data) {
+  $.post(caURL,{action:'dockerApply',dockerSettings:dockerSettings,autoUpdate:autoUpdate,offered:offered,dockerCron:dockerCron},function(data) {
     if (data) {
       $("#testing").html(data);
     }
