@@ -21,7 +21,7 @@ function renderedContainers($block,$info,$moreInfo,$settings=[]) {
   preg_match_all("/data-docker='([^']+)'/",$dockerSettings,$matches);
   return $matches[1];
 }
-$block = between($page,'$dockerSettings = "<table><tr>";','} else {'."\n".'  $dockerSettings = "<table><tr><td><center>');
+$block = between($page,'$dockerSettings = "<div class=\'caAutoUpdateGrid\'>";','} else {'."\n".'  $dockerSettings = "<table><tr><td><center>');
 
 $live = fn($name,$manager='dockerman') => ['Name'=>$name,'Image'=>"$name:latest",'Manager'=>$manager];
 $info = ['zulu'=>['icon'=>''],'deleted'=>['icon'=>''],'alpha'=>['icon'=>''],'third'=>['icon'=>'']];
