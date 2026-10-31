@@ -149,7 +149,7 @@ function toggleAll() {
 
 
 </script>
-> <center><a href="http://lime-technology.com/forum/index.php?topic=53693.0" target="_blank"><?tr("Support");?></a></center>
+> <center><a href="https://forums.unraid.net/topic/51959-plugin-ca-application-auto-update/" target="_blank"><?tr("Support");?></a></center>
 > <br>
 > <center><a href='https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=7M7CBCVU732XG' target='_blank'><img src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif"></a></center>
 
@@ -221,5 +221,5 @@ function toggleAll() {
 <input type='button' id='dockerApply' value='<?tr("Apply");?>' onclick='dockerApply();' disabled><input type='button' value='<?tr("Done");?>' onclick='done();'>
 
 <a style='float:right;cursor:pointer' onclick='showCredits();'><?tr("Credits");?></a><br><br></span>
-<center><a href="http://lime-technology.com/forum/index.php?topic=53693.0" target="_blank"><?tr("Support");?></a></center>
+<center><a href="https://forums.unraid.net/topic/51959-plugin-ca-application-auto-update/" target="_blank"><?tr("Support");?></a></center>
 <center><?tr("Version");?> <strong><span class='caUpdateVersion'></span></strong></center>

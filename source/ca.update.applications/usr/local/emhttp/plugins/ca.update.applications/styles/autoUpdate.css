@@ -7,6 +7,8 @@
 .caAutoUpdateRow img{flex:none;margin-right:12px}
 .caAutoUpdateName{flex:1;min-width:0;overflow-wrap:anywhere}
 .caAutoUpdateToggle{flex:none;display:flex;align-items:center;white-space:nowrap}
+#pluginList th:last-child{width:170px}
+#pluginList td:last-child{white-space:nowrap}
 
 /* Only reached from Unraid 7.2; older releases set a fixed desktop viewport */
 @media (max-width:767px){
