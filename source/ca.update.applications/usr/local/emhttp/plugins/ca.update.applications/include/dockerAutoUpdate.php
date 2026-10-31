@@ -8,7 +8,7 @@ function caAutoUpdateIsThirdParty($liveContainer,$cachedInfo) {
 
 # CreateDocker.php cannot update a container without a template; only 'false' means a newer image exists
 function caAutoUpdateHasUpdate($cachedInfo) {
-  return ($cachedInfo['updated'] ?? null) === "false" && ! empty($cachedInfo['template']);
+  return $cachedInfo['updated'] === "false" && ! empty($cachedInfo['template']);
 }
 
 # A changed image ID is the evidence that an update happened
