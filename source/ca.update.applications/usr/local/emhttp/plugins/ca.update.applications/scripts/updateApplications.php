@@ -31,6 +31,10 @@ function checkPluginUpdate($filename) {
   }
   if ( $installedVersion < $upgradeVersion ) {
     $unRaid = plugin("min","/tmp/plugins/$filename");
+    $unRaidMax = plugin("max","/tmp/plugins/$filename");
+    if ( $unRaidMax && version_compare($unRaidVersion['version'],$unRaidMax,">") ) {
+      return false;
+    }
     if ( $unRaid === false || version_compare($unRaidVersion['version'],$unRaid,">=") ) {
       return true;
     } else {
@@ -81,18 +85,15 @@ foreach ($pluginsInstalled  as $plugin) {
 				array_pop($tmpPlg);
 				$pluginVersion = implode(".",$tmpPlg);
 			}
-      $pluginVersion = preg_replace('/[^0-9.]+/', "", $pluginVersion); # get rid of any alphabetic suffixes on the version date
+      $pluginVersion = preg_replace('/[^0-9.].*$/', "", $pluginVersion); # get rid of any suffix on the version date
       $pluginDate = date_create_from_format("Y.m.d",$pluginVersion);
 
-      if ( ! $pluginDate && $appList['delay'] != 0 && $appList['Global'] != "true") {
+      # Without a date the delay cannot be measured, so only "update all with no delay" installs it
+      if ( ! $pluginDate && ( $appList['delay'] != 0 || ($appList['Global'] ?? "") != "true" ) ) {
         logger("$plugin has a non-conforming version string.  Cannot autoupdate");
         continue;
       }
-      if ( ! $pluginDate ) {
-        logger("$plugin did not return valid date $pluginVersion");
-        continue;
-      }
-      $age = pluginAgeDays($pluginDate,$currentDate);
+      $age = $pluginDate ? pluginAgeDays($pluginDate,$currentDate) : 0;
       if ( ($age >= $appList['delay']) || ($appList['delay'] == 0) ) {
         logger("Auto Updating $plugin");
  //       exec("mkdir -p /boot/config/plugins-old-versions/$plugin/$installedVersion");
@@ -106,6 +107,9 @@ foreach ($pluginsInstalled  as $plugin) {
         } else {
           foreach ($output as $line) {
             logger($line);
+          }
+          if ( $appList['notify'] != "no" ) {
+            notify("Community Applications","Application Auto Update",$plugin." Update Failed","","warning");
           }
         }
       } else {

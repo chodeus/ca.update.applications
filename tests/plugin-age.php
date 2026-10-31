@@ -41,5 +41,33 @@ foreach (['00:00:01','07:00:00','23:59:59'] as $time) {
 }
 date_default_timezone_set('America/New_York');
 $failures += checks($block,'2026-03-09 07:00:00',['across a daylight saving change' => ['2026.03.07',2]]);
+
+function logger($message) {}
+$parseStart = strpos($script,'$tmpPlg = explode');
+if ($parseStart === false) throw new Exception('Version block not found');
+$parse = substr($script,$parseStart,$end-$parseStart);
+function parsedAge($parse,$version,$delay,$global) {
+  $appList = ['delay'=>$delay,'Global'=>$global];
+  $plugin = 'fixture.plg';
+  $pluginVersion = $version;
+  $currentDate = date_create('2026-10-31 07:00:00');
+  $age = 'skipped';
+  eval("foreach ([1] as \$once) { $parse }");
+  return $age;
+}
+date_default_timezone_set('UTC');
+foreach ([
+  'letter and number suffix'     => ['2026.10.16b1',3,'false',15],
+  'dashed suffix'                => ['2026.10.16-beta2',3,'false',15],
+  'letter suffix'                => ['2026.10.16a',3,'false',15],
+  'four-part version'            => ['2026.10.28.0400',3,'false',3],
+  'no date, delay set'           => ['7.1',3,'true','skipped'],
+  'no date, no delay, not all'   => ['7.1',0,'false','skipped'],
+  'no date, no delay, update all' => ['7.1',0,'true',0],
+] as $label => [$version,$delay,$global,$expected]) {
+  $actual = parsedAge($parse,$version,$delay,$global);
+  echo ($actual === $expected ? 'PASS' : 'FAIL')." $label: $version = ".var_export($actual,true)."\n";
+  if ($actual !== $expected) $failures++;
+}
 echo "$failures failures\n";
 exit($failures ? 1 : 0);
