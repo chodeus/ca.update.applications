@@ -126,6 +126,7 @@ if ( is_array($updateSettings['cron'] ?? null) ) {
 }
 ?>
 <link type="text/css" rel="stylesheet" href="<?=autov("/plugins/ca.update.applications/styles/switchbutton.css")?>">
+<link type="text/css" rel="stylesheet" href="<?=autov("/plugins/ca.update.applications/styles/autoUpdate.css")?>">
 <style>
 <?if ($backTopTopIncluded == "false"):?>
 .back-to-top {
@@ -322,8 +323,8 @@ function changeApply() {
 > <center><a href='https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=7M7CBCVU732XG' target='_blank'><img src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif"></a></center>
 
 
-<div>
-<div style='width:45%;float:left;'>
+<div class='caAutoUpdateColumns'>
+<div class='caAutoUpdateColumn'>
 <table>
 <tr><td><strong><?tr("Send Notifications On Update?");?></strong></td>
 <td><select id='notify' size='1' onchange='changeApply();'>
@@ -347,7 +348,7 @@ function changeApply() {
 </select></td></tr>
 </tr></table>
 </div>
-<div style='width:45%;float:left;'>
+<div class='caAutoUpdateColumn'>
 <table>
 
 <tr><td><strong><?tr("Day Of Week:");?></strong></td>
