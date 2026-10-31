@@ -51,12 +51,21 @@ function caAutoUpdateNotRebuilt($names,$liveContainers) {
   }));
 }
 
-# Recreating a container strands those sharing its network; a rebuild needs a template and a running parent
-function caAutoUpdateStrandedChildren($recreated,$networkParents,$liveContainers,$info) {
+# Recreating a container strands those sharing its network, while the parent runs
+function caAutoUpdateStrandedChildren($recreated,$networkParents,$liveContainers) {
   $running = array_column($liveContainers,'Running','Name');
-  $children = array_filter(array_keys(array_intersect($networkParents,$recreated)),function($child) use ($networkParents,$running,$info) {
-    return ! empty($info[$child]['template']) && ($running[$networkParents[$child]] ?? false);
+  $children = array_filter(array_keys(array_intersect($networkParents,$recreated)),function($child) use ($networkParents,$running) {
+    return $running[$networkParents[$child]] ?? false;
   });
   return caAutoUpdateNotRebuilt($children,$liveContainers);
+}
+
+# Still stranded, or stopped when it was running before the update
+function caAutoUpdateNeedsAttention($updateList,$stranded,$info,$liveContainers) {
+  $running = array_column($liveContainers,'Running','Name');
+  $stopped = array_filter(array_merge($updateList,$stranded),function($name) use ($info,$running) {
+    return $info[$name]['running'] && empty($running[$name]);
+  });
+  return array_values(array_unique(array_merge(caAutoUpdateNotRebuilt($stranded,$liveContainers),$stopped)));
 }
 ?>
