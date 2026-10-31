@@ -21,14 +21,6 @@ function notify($event,$subject,$description,$message="",$type="normal") {
   shell_exec($command);
 }
 
-# CreateDocker.php only adds the WireGuard route to a container it started itself; addRoute needs Unraid 6.10
-function startContainerWithRoute($container) {
-  exec("docker start ".escapeshellarg($container));
-  if ( function_exists("addRoute") ) {
-    addRoute($container);
-  }
-}
-
 function reportUpdates($settings,$updated,$notUpdated,$notRebuilt) {
   if ( $notUpdated ) {
     logger("Not updated: ".implode(" ",$notUpdated));
@@ -146,7 +138,7 @@ include("/usr/local/emhttp/plugins/dynamix.docker.manager/include/CreateDocker.p
 foreach ($updateList as $containerScript) {
   if ($info[$containerScript]['running']) {
     logger("Restarting $containerScript");
-		startContainerWithRoute($containerScript);
+		$DockerClient->startContainer($containerScript);
 	}
   if ( is_file("/boot/config/plugins/ca.update.applications/scripts/starting/$containerScript") ) {
     logger("Executing custom start script /boot/config/plugins/ca.update.applications/scripts/starting/$containerScript");
@@ -168,7 +160,7 @@ if ( $stranded ) {
   exec("/usr/bin/php /usr/local/emhttp/plugins/ca.update.applications/scripts/rebuildContainers.php ".implode(" ",array_map("escapeshellarg",$stranded))." >/dev/null 2>&1");
   foreach ($stranded as $container) {
     if ( $info[$container]['running'] ) {
-      startContainerWithRoute($container);
+      $DockerClient->startContainer($container);
     }
   }
   $DockerClient->flushCaches();
