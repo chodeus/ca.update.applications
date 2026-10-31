@@ -19,14 +19,11 @@ function caAutoUpdateChangedContainers($names,$info,$liveContainers) {
   }));
 }
 
-# The image CreateDocker.php will use, or the fallback when the template cannot be read
-function caAutoUpdateTemplateImage($template,$fallback) {
+# The image CreateDocker.php will use; some templates carry extra arguments after it
+function caAutoUpdateTemplateImage($template) {
   $doc = new DOMDocument();
-  if ( ! @$doc->load($template) ) {
-    return $fallback;
-  }
-  $repository = $doc->getElementsByTagName('Repository')->item(0);
-  return ($repository ? strtok(trim($repository->nodeValue)," ") : false) ?: $fallback;
+  $doc->load($template);
+  return strtok(trim($doc->getElementsByTagName('Repository')->item(0)->nodeValue)," ");
 }
 
 # Container name => the container whose network it shares

@@ -97,7 +97,7 @@ if ( ! isset($updateList) ) {
 # Pull before anything stops, so a slow or failed download costs no downtime
 $pullFailed = [];
 foreach ($updateList as $container) {
-  $image = caAutoUpdateTemplateImage($info[$container]['template'],$info[$container]['repository']);
+  $image = caAutoUpdateTemplateImage($info[$container]['template']);
   logger("Pulling $image for $container");
   $pullOutput = [];
   exec("docker pull ".escapeshellarg($image)." 2>&1",$pullOutput,$pullError);
@@ -123,12 +123,13 @@ foreach ($updateList as $containerScript) {
     exec("/bin/bash /boot/config/plugins/ca.update.applications/scripts/stopping/$containerScript");
   }
 }
-$delayTime = (int)($settings['global']['dockerStopDelay'] ?? 0) ?: 10;
+$delayTime = $settings['global']['dockerStopDelay'];
+$delayTime = $delayTime ? $delayTime : 10;
 
 foreach ($updateList as $container) {
   if ( $info[$container]['running'] ) {
     logger("Stopping $container");
-		exec("docker stop -t $delayTime ".escapeshellarg($container));
+		exec("docker stop -t $delayTime $container");
   }
 }
 logger("Installing Updates for ".implode(" ",$updateList));
@@ -157,7 +158,7 @@ $notRebuilt = [];
 $stranded = caAutoUpdateStrandedChildren($updateList,$networkParents,$liveContainers,$info);
 if ( $stranded ) {
   logger("Rebuilding ".implode(" ",$stranded)." (sharing the network of a recreated container)");
-  exec("/usr/bin/php /usr/local/emhttp/plugins/ca.update.applications/scripts/rebuildContainers.php ".implode(" ",array_map("escapeshellarg",$stranded))." >/dev/null 2>&1");
+  exec("/usr/bin/php /usr/local/emhttp/plugins/ca.update.applications/scripts/rebuildContainers.php ".implode(" ",$stranded)." >/dev/null 2>&1");
   foreach ($stranded as $container) {
     if ( $info[$container]['running'] ) {
       $DockerClient->startContainer($container);
@@ -169,7 +170,7 @@ if ( $stranded ) {
 
 # Pulling first hides the old image from CreateDocker.php; docker refuses while anything still uses it
 foreach ($updated as $container) {
-  exec("docker rmi ".escapeshellarg($info[$container]['ImageId'])." >/dev/null 2>&1");
+  exec("docker rmi ".$info[$container]['ImageId']." >/dev/null 2>&1");
 }
 reportUpdates($settings,$updated,array_merge($pullFailed,array_diff($updateList,$updated)),$notRebuilt);
 
