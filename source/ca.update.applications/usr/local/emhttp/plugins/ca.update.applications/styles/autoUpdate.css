@@ -1,5 +1,7 @@
 .caAutoUpdateColumns{display:flex;flex-wrap:wrap;justify-content:space-between}
 .caAutoUpdateColumn{flex:0 1 48%;min-width:0}
+.caAutoUpdateColumn table{width:auto}
+.caAutoUpdateColumn td:first-child{padding-right:24px}
 .caAutoUpdateGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));grid-gap:8px 32px;margin:24px 0}
 .caAutoUpdateRow{display:flex;align-items:center;min-width:0}
 .caAutoUpdateRow img{flex:none;margin-right:12px}
