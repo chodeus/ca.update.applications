@@ -21,6 +21,35 @@ function notify($event,$subject,$description,$message="",$type="normal") {
   shell_exec($command);
 }
 
+# CreateDocker.php only adds the WireGuard route to a container it started itself; addRoute needs Unraid 6.10
+function startContainerWithRoute($container) {
+  exec("docker start ".escapeshellarg($container));
+  if ( function_exists("addRoute") ) {
+    addRoute($container);
+  }
+}
+
+function reportUpdates($settings,$updated,$notUpdated,$notRebuilt) {
+  if ( $notUpdated ) {
+    logger("Not updated: ".implode(" ",$notUpdated));
+  }
+  if ( $notRebuilt ) {
+    logger("Not rebuilt: ".implode(" ",$notRebuilt));
+  }
+  if ( $settings['global']['dockerNotify'] == "yes" ) {
+    if ( $updated ) {
+      notify("Community Applications","Docker Auto Update",implode(" ",$updated)." Automatically Updated");
+    }
+    if ( $notUpdated ) {
+      notify("Community Applications","Docker Auto Update",implode(" ",$notUpdated)." Not Updated","","warning");
+    }
+    if ( $notRebuilt ) {
+      notify("Community Applications","Docker Auto Update",implode(" ",$notRebuilt)." Not Rebuilt","","warning");
+    }
+  }
+  logger("Community Applications Docker Autoupdate finished");
+}
+
 # Check for available docker updates
 
 logger("Community Applications Docker Autoupdate running");
@@ -73,6 +102,25 @@ if ( ! isset($updateList) ) {
   exit;
 }
 
+# Pull before anything stops, so a slow or failed download costs no downtime
+$pullFailed = [];
+foreach ($updateList as $container) {
+  $image = caAutoUpdateTemplateImage($info[$container]['template'],$info[$container]['repository']);
+  logger("Pulling $image for $container");
+  $pullOutput = [];
+  exec("docker pull ".escapeshellarg($image)." 2>&1",$pullOutput,$pullError);
+  if ( $pullError ) {
+    logger("Could not pull $image: ".end($pullOutput));
+    $pullFailed[] = $container;
+  }
+}
+$networkParents = caAutoUpdateNetworkParents($containers);
+$updateList = caAutoUpdateParentsFirst(array_diff($updateList,$pullFailed),$networkParents);
+if ( ! $updateList ) {
+  reportUpdates($settings,[],$pullFailed,[]);
+  exit;
+}
+
 if ( is_file("/boot/config/plugins/ca.update.applications/scripts/stopping/stop_all") ) {
   logger("Executing custom stop script /boot/config/plugins/ca.update.applications/scripts/stopping/stop_all");
   exec("/bin/bash /boot/config/plugins/ca.update.applications/scripts/stopping/stop_all");
@@ -83,13 +131,12 @@ foreach ($updateList as $containerScript) {
     exec("/bin/bash /boot/config/plugins/ca.update.applications/scripts/stopping/$containerScript");
   }
 }
-$delayTime = $settings['global']['dockerStopDelay'];
-$delayTime = $delayTime ? $delayTime : 10;
+$delayTime = (int)($settings['global']['dockerStopDelay'] ?? 0) ?: 10;
 
 foreach ($updateList as $container) {
   if ( $info[$container]['running'] ) {
     logger("Stopping $container");
-		exec("docker stop -t $delayTime $container");
+		exec("docker stop -t $delayTime ".escapeshellarg($container));
   }
 }
 logger("Installing Updates for ".implode(" ",$updateList));
@@ -99,7 +146,7 @@ include("/usr/local/emhttp/plugins/dynamix.docker.manager/include/CreateDocker.p
 foreach ($updateList as $containerScript) {
   if ($info[$containerScript]['running']) {
     logger("Restarting $containerScript");
-		exec("docker start $containerScript");
+		startContainerWithRoute($containerScript);
 	}
   if ( is_file("/boot/config/plugins/ca.update.applications/scripts/starting/$containerScript") ) {
     logger("Executing custom start script /boot/config/plugins/ca.update.applications/scripts/starting/$containerScript");
@@ -112,19 +159,26 @@ if ( is_file("/boot/config/plugins/ca.update.applications/scripts/starting/start
 }
 
 $DockerClient->flushCaches();
-$updated = caAutoUpdateChangedContainers($updateList,$info,$DockerClient->getDockerContainers());
-$notUpdated = array_diff($updateList,$updated);
-if ( $notUpdated ) {
-  logger("Not updated: ".implode(" ",$notUpdated));
-}
-if ( $settings['global']['dockerNotify'] == "yes" ) {
-  if ( $updated ) {
-    notify("Community Applications","Docker Auto Update",implode(" ",$updated)." Automatically Updated");
+$liveContainers = $DockerClient->getDockerContainers();
+$updated = caAutoUpdateChangedContainers($updateList,$info,$liveContainers);
+$notRebuilt = [];
+$stranded = caAutoUpdateStrandedChildren($updateList,$networkParents,$liveContainers,$info);
+if ( $stranded ) {
+  logger("Rebuilding ".implode(" ",$stranded)." (sharing the network of a recreated container)");
+  exec("/usr/bin/php /usr/local/emhttp/plugins/ca.update.applications/scripts/rebuildContainers.php ".implode(" ",array_map("escapeshellarg",$stranded))." >/dev/null 2>&1");
+  foreach ($stranded as $container) {
+    if ( $info[$container]['running'] ) {
+      startContainerWithRoute($container);
+    }
   }
-  if ( $notUpdated ) {
-    notify("Community Applications","Docker Auto Update",implode(" ",$notUpdated)." Not Updated","","warning");
-  }
+  $DockerClient->flushCaches();
+  $notRebuilt = caAutoUpdateNotRebuilt($stranded,$DockerClient->getDockerContainers());
 }
-logger("Community Applications Docker Autoupdate finished");
+
+# Pulling first hides the old image from CreateDocker.php; docker refuses while anything still uses it
+foreach ($updated as $container) {
+  exec("docker rmi ".escapeshellarg($info[$container]['ImageId'])." >/dev/null 2>&1");
+}
+reportUpdates($settings,$updated,array_merge($pullFailed,array_diff($updateList,$updated)),$notRebuilt);
 
 ?>
