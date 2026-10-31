@@ -4,6 +4,7 @@ $base = dirname(__DIR__).'/source/ca.update.applications/usr/local/emhttp/plugin
 $pagePath = $argv[1] ?? "$base/dockerUpdateApps.page";
 $helpersPath = $argv[2] ?? "$base/include/helpers.php";
 require $helpersPath;
+require_once "$base/include/dockerAutoUpdate.php";
 $page = file_get_contents($pagePath);
 
 function between($source,$from,$to) {
@@ -53,6 +54,9 @@ $checks = [
     renderedContainers($block,$info,[]),[]],
   ['page hides third-party containers when told to',
     renderedContainers($block,$info,[$live('alpha'),$live('third',false)],['global'=>['dockerIgnoreThirdParty'=>'yes']]),['alpha']],
+  ['page without a Manager key hides only containers with no template',
+    renderedContainers($block,['alpha'=>['icon'=>'','template'=>'/x.xml'],'third'=>['icon'=>'','template'=>false]],
+      [['Name'=>'alpha','Image'=>'alpha:latest'],['Name'=>'third','Image'=>'third:latest']],['global'=>['dockerIgnoreThirdParty'=>'yes']]),['alpha']],
   ['merge turns an offered toggle off',
     mergeAutoUpdateContainers($on('a','b'),['a'],['a','b']),$on('a')],
   ['merge turns an offered toggle on',
