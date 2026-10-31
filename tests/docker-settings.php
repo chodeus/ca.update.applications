@@ -14,10 +14,13 @@ function between($source,$from,$to) {
 }
 function tr($string,$ret=false) {return $string;}
 
-function renderedContainers($block,$info,$moreInfo,$settings=[]) {
+function renderedHtml($block,$info,$moreInfo,$settings=[]) {
   $dockerUpdateSettings = $settings;
   eval($block);
-  preg_match_all("/data-docker='([^']+)'/",$dockerSettings,$matches);
+  return $dockerSettings;
+}
+function renderedContainers($block,$info,$moreInfo,$settings=[]) {
+  preg_match_all("/data-docker='([^']+)'/",renderedHtml($block,$info,$moreInfo,$settings),$matches);
   return $matches[1];
 }
 $block = between($page,'$dockerSettings = "<table><tr>";','} else {'."\n".'  $dockerSettings = "<table><tr><td><center>');
@@ -26,8 +29,21 @@ $live = fn($name,$manager='dockerman') => ['Name'=>$name,'Image'=>"$name:latest"
 $info = ['zulu'=>['icon'=>''],'deleted'=>['icon'=>''],'alpha'=>['icon'=>''],'third'=>['icon'=>'']];
 $on = fn(...$names) => array_combine($names,array_map(fn($n)=>['name'=>$n,'update'=>true],$names));
 
+$unsafeName = "a'b<c>";
+$unsafeHtml = renderedHtml($block,
+  [$unsafeName=>['icon'=>"/i'<x>.png"]],
+  [['Name'=>$unsafeName,'Image'=>"r'<y>:latest",'Manager'=>'dockerman']],
+  ['containers'=>$on($unsafeName)]);
+
 $_POST = ['scalar'=>'x','list'=>['a']];
 $checks = [
+  ['page escapes container, image and icon values in the markup',
+    [strpos($unsafeHtml,"a&#039;b&lt;c&gt;") !== false,strpos($unsafeHtml,"r&#039;&lt;y&gt;:latest") !== false,strpos($unsafeHtml,"/i&#039;&lt;x&gt;.png") !== false,preg_match("/<[cxy]>/",$unsafeHtml)],
+    [true,true,true,0]],
+  ['page looks up a saved toggle by the raw container name',
+    strpos($unsafeHtml,"unRaidDockerButton") !== false,true],
+  ['merge ignores a selected container the page did not offer',
+    mergeAutoUpdateContainers($on('hidden'),['other'],['a']),$on('hidden')],
   ['getPostArray returns a posted array',getPostArray('list'),['a']],
   ['getPostArray turns a posted scalar into an empty array',getPostArray('scalar'),[]],
   ['getPostArray returns an empty array when nothing was posted',getPostArray('missing'),[]],

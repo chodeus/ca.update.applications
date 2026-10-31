@@ -36,7 +36,7 @@ function mergeAutoUpdateContainers($saved,$selected,$offered) {
   foreach ($offered as $container) {
     unset($saved[$container]);
   }
-  foreach ($selected as $container) {
+  foreach (array_intersect($selected,$offered) as $container) {
     $saved[$container] = ['name'=>$container,'update'=>true];
   }
   return $saved;
